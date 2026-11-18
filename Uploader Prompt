@@ -1,32 +1,102 @@
-FIRST DRAFT OF CLAUDE PROMPT
+Stepbirds SoundCloud Uploader: session prompt (v2)
 
-I have a musical experiment going on with a few friends. We are a rock band called "The Stepbirds." We have a rotating crew of musicians that have been recording in our practice space, mostly on Wednesday nights and weekends, for the past 6 years or so. The building that the practice space is in is called "The Brickyard" and our space is "Room I."
+    Paste everything below into Claude Code on the practice laptop. Before you start: have ffmpeg available (or let Claude install it with winget), know where the old script and run log live if you can, and have SoundCloud API app credentials ready (see "Credentials").
 
-When we meet and play together we almost always record the session. Each session we record creates a new directory in "E:\Studio One\Songs" on our practice space (Windows) laptop. We record the room using 2 microphones, so most nights have a "Track 1.wav" and a "Track 2.wav" inside the directory created that night. If you examine dir_songs.txt in my github repository (https://github.com/jeffress/stepbirds) you can see a snapshot of a dir command I ran there several months ago.
+Who we are
 
-#THE PROBLEM
+We're The Stepbirds, a rock band with a rotating crew. For about six years we've recorded nearly every session (mostly Wednesday nights and weekends) in our practice space, Room I at the Brickyard building. Note: the session folders on disk say "Brickhouse Room I", not "Brickyard". Use the folder names as they are.
 
-We want all of our songs uploaded to our Soundcloud account so we can listen to them outside the practice space. We have started this effort, and have 491 "Tracks" uploaded to Soundcloud. I will give you the credentials needed to access our SounCloud account. When we get this solution/"app" launched and running we want it to do the following: 
+Every session Studio One creates a folder in E:\Studio One\Songs. We record the room with two mics, so most takes are a mono pair: Media\Track 1.wav + Media\Track 2.wav, and later takes in the same session are Track 1(2).wav + Track 2(2).wav, Track 1(3).wav + Track 2(3).wav, and so on.
 
-1. verify where we are in the "upload everything" process, and finish pushing the remainder of the non-uploaded tracks to our SoundCLoud account.
-2. identify any problems preventing tracks from being uploaded, log them, and help us resolve them.  
-3. Keep a clear record of what has been placed online and what has not. 
+A snapshot of the folder tree (from about September 2026) is dir_songs.txt in https://github.com/jeffress/stepbirds. It is about 1 MB. Do not read it whole. Use Select-String, a short script, or a fresh Get-ChildItem on the live drive to summarize it.
 
-Once the above is done, the script/app will evolve to its next mission, which is to "watch this directory and keep SoundCloud updated as new recordings land here." So that functionality should be baked into this first iteration. 
+The goal
 
-##Requirements
-1. The E:\Studio One\Songs directory, and all assets within, as well as any of its subdirectories, *must* be treated as read-only. *Nothing* may be edited or deleted in this location. These are the only copy of our "master tapes." Use a temporary directory for any file manipulation.  
-2. Bounce the twin mono tracks to a stereo WAV file before uploading. Name the files per existing naming convention.
-3. SoundCloud API expertise is needed. Obey all limitations with wide margins. We must be good citizens on their server(s).  
-4. Add each uploaded "track" to the existing Playlist by year. You will find 6 playlists in our account with tracks already in them. Identify any songs that may have not been properly added to a yearly playlist.
-5. Find the previous scripting attempt on the laptop, understand it and improve it, there should be no need to write a whole new script. It was a good effort but has stalled as I lost access to the account under which it was created.
-6. Allow this to run in Powershell and to monitor itself. We have limited AI "tokens" and must be miserly with them. Logging must be human-readable. There already is a run log that you will get access to.  If at all possible, we'd like to cleanly start up where that previous job ended. This project will take over and be the solution, but a lot of ground has already been covered. Be mindful of my anthropic account limitations and fail gracefully before you disable my account for a period of time.
-7. We want this to eventually run by itself, monitoring our directory on the laptop, and to automatically upload every new recording.
-8. Read the previous run log, and pick up from where that ended. Reuse existing logs, etc. so that this project handoff stays understandable. Explain clearly as you go using the log.
-9. StudioOne ".song" file parsing. You will need to research and learn that.
+Get every recording we want online onto our SoundCloud account, keep a clear record of what's up and what isn't, then keep SoundCloud in sync automatically as new sessions land. About 491 tracks are already uploaded from an earlier effort.
 
-##Problems
-1. when there is more than one "Track1|2.wav" pair in the directory it may be a situation where we paused the recording, or where we tried to add tracks, overdubbing an existing track. You'll have to parse the .song file to see which is which. 
-2. Other bands/groups also use this space, and sometimes their recordings end up in our "Songs" directory. Maintain a separate list of "Tracks we don't want on SoundCloud" - that will be a working file that we edit as we listen to this big deposit of music tracks. As either you or I add files or directories to that EXCLUSION LIST you should delete them from SoundCloud, and continue to refer to the list as a source of truth re: what goes up to the internet and what does not when maintaining our uploads on SoundCloud.
+"Approved" means: every take that is not on the exclusion list (below) and passes the quality checks.
 
-I have endeavored to remember most of the stumbling blocks that arose during our first effort. Please review and suggest improvements to this prompt. You will get access to this site tonight when I log in on that laptop so I want to be ready.
+Hard rules (never break these)
+
+    E:\Studio One\Songs is read-only. It holds our only master copies. Never create, rename, move, edit or delete anything under it, including .song files, History, Cache, or Studio One's own files. Open files read-only. Do all work in a staging folder on the D: drive with enough free space (a stereo bounce can be ~2.7 GB; check free space before each bounce and delete staged files after a confirmed upload).
+    Never ask me to paste passwords, tokens or secrets into this chat, and never write them into the repo, the logs, or any file Claude reads back. See "Credentials".
+    Nothing irreversible on SoundCloud without my yes. Deleting a track, removing tracks from a playlist, or overwriting a playlist's track list requires a dry-run report first and my explicit confirmation in this chat.
+    Phase 1 is read-only everywhere. No uploads and no SoundCloud changes until I've approved the inventory report.
+
+Credentials
+
+The SoundCloud API uses OAuth (client ID + client secret, then an access token and refresh token). The script needs those, not our account password.
+
+    I lost access to the account that the old script's API app was registered under, so we probably need a new SoundCloud API app registered to the band's account. Tell me the steps; I'll do the registration and the browser login myself. Note that SoundCloud has at times limited new app registrations, so check the current process first.
+    Store secrets with PowerShell SecretManagement / Windows Credential Manager (preferred), or in a file outside the repo and outside E:\Studio One\Songs, readable only by my Windows user. Add any local config files to .gitignore.
+    Handle token refresh in the script so it can run unattended.
+
+Phase 0: Find and understand what exists (report before changing anything)
+
+    Find the previous script(s), config and run log on this laptop. Look in my user profile, other Windows user profiles (the "lost account" may be an old Windows login), Documents, Desktop, C:\Scripts, and Task Scheduler. Search for *.ps1, *.py, *.log mentioning "soundcloud". If something needs admin rights, tell me.
+    Read the old script and the end of the run log (tail, not the whole thing). Summarize in a few lines: how it named tracks, how it bounced audio, what it recorded as done, where and why it stopped.
+    Check the tools: PowerShell version (5.1 vs 7), ffmpeg/sox, free disk space on each drive.
+
+Improve the old script rather than rewriting it, unless it's unsalvageable. If so, say why in one paragraph before replacing it.
+
+Phase 1: Inventory and dry run (read-only)
+
+Build one manifest file (CSV or JSON) that is the single source of truth. One row per take, with at least: session folder, take number, source files, sizes, duration, recorded date, year/playlist, intended SoundCloud title, status (pending / uploaded / excluded / skipped / error), SoundCloud track ID and URL, playlist, last error, last updated.
+
+To fill it:
+
+    Local side: walk every session folder's Media subfolder. Pair takes by their (n) suffix.
+    SoundCloud side: list all our tracks and all six yearly playlists (2021 to 2026) via the API.
+    Match existing uploads to local takes using the old run log first, then title, then duration (±2 s). Record the SoundCloud track ID for each match. List anything that doesn't match on either side.
+    Report: total takes, already uploaded, still pending, excluded, skipped (with reasons), uploaded but missing from a yearly playlist (or in the wrong one), and SoundCloud tracks with no local match.
+
+Edge cases already visible in dir_songs.txt. Handle each and report counts:
+
+    Tiny takes: about 81 Track 1 files are under 10 MB (false starts or soundchecks, often ~800 KB). Propose a minimum duration (e.g. 60 s) and list what it would skip. Don't upload these by default.
+    Unpaired takes: a Track 1(n) with no Track 2(n) or vice versa (about 6, e.g. 2022-11-30 takes 8 to 10, 2025-09-26 takes 3 and 4). Upload as mono duplicated to both channels, or flag. Ask me which.
+    Name variants: Track  1.wav (two spaces) exists alongside Track 1.wav. Match names flexibly.
+    More than two tracks per take (Track 3.wav and up, e.g. 2021-09-06 has Tracks 1 to 6) and multitrack sessions with named inputs (Snare, Kick Drum, Overheads, Vocal 1, Guitar 1 and so on, about 12 sessions, e.g. "2026-04-22 Brickhouse First Try At Multitracking"). A two-mic bounce doesn't apply here. Flag them for me. If a finished mixdown exists (Mixdown\ or Bounces\ folders, e.g. 2023-12-06, 2026-02-15 (2), 2026-05-27), propose uploading that instead.
+    Overdubs vs. new takes: when one folder has several pairs, parse the session's top-level .song file to tell sequential takes (new recording) from overdubs (layered over an earlier take at the same timeline position). A .song file is, I believe, a ZIP of XML files. Verify that, and research the format. Ignore .song copies under History\ and .autosave files..s
+    Folders with no Media (e.g. 2021-10-12 Brickhouse Room I(10)) should be skipped and logged.
+    Undated or titled folders: "Maniac On The Vapor Trail" and "Valley Of Despair" have no date in the name. Get the year from file timestamps for the playlist, and tell me. Folders like 2026-04-26 Prayer carry a real song title; use it in the SoundCloud title.
+    Notes in folder names, e.g. (4 big blank space in middle) and (2) james and walker bass lead then mask. Keep the text in the title or description, and flag the "blank space" one for me.
+    Other bands' recordings won't be obvious from names. Don't guess. That's what the exclusion list is for.
+
+Naming and audio
+
+    Bounce each pair into one stereo file (Track 1 = left, Track 2 = right) with ffmpeg, keeping the source sample rate and bit depth. Recommend whether to upload WAV or FLAC (FLAC is lossless and about half the size, which makes uploads faster). Respect SoundCloud's per-file size and length limits, and check the current limits.
+    Use the title convention the existing 491 uploads already follow (work it out from the old script and the API listing, and show me). If there isn't one, propose: YYYY-MM-DD Brickhouse Room I - Take N (or the song title when the folder has one).
+    All uploads are to be private. We are not publicizing or sharing these tracks with anyone except band members.
+
+Playlists
+
+    Add each upload to its year's playlist (by recording date). A new year needs a new playlist; create it using the same naming as the existing six.
+    Updating a playlist via the API replaces its whole track list, so always read it first, add to it, write it back, and keep a local backup of every playlist's track list before changing it.
+
+Exclusion list
+
+    A plain text file, exclusions.txt, that we edit by hand. One entry per line: a session folder, or a folder plus take number. # starts a comment, and we'll often add a reason ("not us", "bad take").
+    The script never uploads anything that's on it.
+    If something on the list is already on SoundCloud, log it. Actual deletion only happens after I confirm a dry-run list of exactly what will be deleted. Record the outcome in the manifest.
+
+Being a good SoundCloud API citizen
+
+    Look up SoundCloud's current API rate limits and our account's upload quota, and stay well under them: one upload at a time, a pause between uploads, and a daily cap (start with something like 25 uploads a day and tell me the reasoning).
+    On HTTP 429 or 5xx: back off exponentially, honour Retry-After, and stop for the day after repeated failures.
+    Make every step resumable and idempotent: after a crash, the manifest says exactly what's done, and nothing is ever uploaded twice.
+
+Running by itself (and saving AI tokens)
+
+    The uploader and the watcher must be plain PowerShell run by Windows Task Scheduler, with no AI involved. Claude is only for building and fixing it. Don't keep a Claude session running just to monitor uploads.
+    Watcher: on each run (e.g. hourly, and only when the laptop is idle), look for new session folders or takes. Only treat a take as ready once its files haven't changed for at least 30 minutes, so we never grab a recording that's still in progress or a session that's still open in Studio One.
+    Logs: keep appending to the existing run log so the handoff stays readable. Use one line per action with a timestamp, in plain English. Also write a short daily summary ("uploaded 12, 3 errors, 140 pending") and rotate logs by month.
+    Errors go to a separate problems report with what failed, why, and the suggested fix, so I can read it without asking Claude.
+    Add a -WhatIf / -DryRun switch, and a -Status command that prints the summary from the manifest.
+
+How to work with me in this session
+
+    Work in phases (0, 1, then build, then a test upload of 2 or 3 takes, then the bulk run). Stop for my OK after Phase 0, Phase 1 and the test upload.
+    Be thrifty with tokens: summarize big files with commands instead of reading them, and don't re-read files you've already understood.
+    Keep HANDOFF.md up to date in the repo as you go: what's done, what's next, open questions, and where everything lives. If this session runs out of usage, a fresh session should be able to continue from that file. Stop at a clean checkpoint rather than mid-change.
+    Commit the script, config template, exclusions.txt and HANDOFF.md to https://github.com/jeffress/stepbirds on a branch, and never commit secrets, the manifest's tokens, or audio.
+    When unsure, ask one clear question rather than guessing.
