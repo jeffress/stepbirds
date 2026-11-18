@@ -1,0 +1,32 @@
+FIRST DRAFT OF CLAUDE PROMPT
+
+I have a musical experiment going on with a few friends. We are a rock band called "The Stepbirds." We have a rotating crew of musicians that have been recording in our practice space, mostly on Wednesday nights and weekends, for the past 6 years or so. The building that the practice space is in is called "The Brickyard" and our space is "Room I."
+
+When we meet and play together we almost always record the session. Each session we record creates a new directory in "E:\Studio One\Songs" on our practice space (Windows) laptop. We record the room using 2 microphones, so most nights have a "Track 1.wav" and a "Track 2.wav" inside the directory created that night. If you examine dir_songs.txt in my github repository (https://github.com/jeffress/stepbirds) you can see a snapshot of a dir command I ran there several months ago.
+
+#THE PROBLEM
+
+We want all of our songs uploaded to our Soundcloud account so we can listen to them outside the practice space. We have started this effort, and have 491 "Tracks" uploaded to Soundcloud. I will give you the credentials needed to access our SounCloud account. When we get this solution/"app" launched and running we want it to do the following: 
+
+1. verify where we are in the "upload everything" process, and finish pushing the remainder of the non-uploaded tracks to our SoundCLoud account.
+2. identify any problems preventing tracks from being uploaded, log them, and help us resolve them.  
+3. Keep a clear record of what has been placed online and what has not. 
+
+Once the above is done, the script/app will evolve to its next mission, which is to "watch this directory and keep SoundCloud updated as new recordings land here." So that functionality should be baked into this first iteration. 
+
+##Requirements
+1. The E:\Studio One\Songs directory, and all assets within, as well as any of its subdirectories, *must* be treated as read-only. *Nothing* may be edited or deleted in this location. These are the only copy of our "master tapes." Use a temporary directory for any file manipulation.  
+2. Bounce the twin mono tracks to a stereo WAV file before uploading. Name the files per existing naming convention.
+3. SoundCloud API expertise is needed. Obey all limitations with wide margins. We must be good citizens on their server(s).  
+4. Add each uploaded "track" to the existing Playlist by year. You will find 6 playlists in our account with tracks already in them. Identify any songs that may have not been properly added to a yearly playlist.
+5. Find the previous scripting attempt on the laptop, understand it and improve it, there should be no need to write a whole new script. It was a good effort but has stalled as I lost access to the account under which it was created.
+6. Allow this to run in Powershell and to monitor itself. We have limited AI "tokens" and must be miserly with them. Logging must be human-readable. There already is a run log that you will get access to.  If at all possible, we'd like to cleanly start up where that previous job ended. This project will take over and be the solution, but a lot of ground has already been covered. Be mindful of my anthropic account limitations and fail gracefully before you disable my account for a period of time.
+7. We want this to eventually run by itself, monitoring our directory on the laptop, and to automatically upload every new recording.
+8. Read the previous run log, and pick up from where that ended. Reuse existing logs, etc. so that this project handoff stays understandable. Explain clearly as you go using the log.
+9. StudioOne ".song" file parsing. You will need to research and learn that.
+
+##Problems
+1. when there is more than one "Track1|2.wav" pair in the directory it may be a situation where we paused the recording, or where we tried to add tracks, overdubbing an existing track. You'll have to parse the .song file to see which is which. 
+2. Other bands/groups also use this space, and sometimes their recordings end up in our "Songs" directory. Maintain a separate list of "Tracks we don't want on SoundCloud" - that will be a working file that we edit as we listen to this big deposit of music tracks. As either you or I add files or directories to that EXCLUSION LIST you should delete them from SoundCloud, and continue to refer to the list as a source of truth re: what goes up to the internet and what does not when maintaining our uploads on SoundCloud.
+
+I have endeavored to remember most of the stumbling blocks that arose during our first effort. Please review and suggest improvements to this prompt. You will get access to this site tonight when I log in on that laptop so I want to be ready.
