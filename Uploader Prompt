@@ -1,6 +1,6 @@
 Stepbirds SoundCloud Uploader: session prompt (v2)
 
-    Paste everything below into Claude Code on the practice laptop. Before you start: have ffmpeg available (or let Claude install it with winget), know where the old script and run log live if you can, and have SoundCloud API app credentials ready (see "Credentials").
+    Paste everything below into Claude Code on the practice laptop. Before you start: have ffmpeg available (or let Claude install it with winget), know where the old script and the Excel run log live if you can, and have SoundCloud API app credentials ready (see "Credentials").
 
 Who we are
 
@@ -18,7 +18,7 @@ Get every recording we want online onto our SoundCloud account, keep a clear rec
 
 Hard rules (never break these)
 
-    E:\Studio One\Songs is read-only. It holds our only master copies. Never create, rename, move, edit or delete anything under it, including .song files, History, Cache, or Studio One's own files. Open files read-only. Do all work in a staging folder on the D: drive with enough free space (a stereo bounce can be ~2.7 GB; check free space before each bounce and delete staged files after a confirmed upload).
+    E:\Studio One\Songs is read-only. It holds our only master copies. Never create, rename, move, edit or delete anything under it, including .song files, History, Cache, or Studio One's own files. Open files read-only. Do all work in a staging folder on a drive with enough free space (a stereo bounce can be ~2.7 GB; check free space before each bounce and delete staged files after a confirmed upload. Find previous efforts' temp folder and use that if possible).
     Never ask me to paste passwords, tokens or secrets into this chat, and never write them into the repo, the logs, or any file Claude reads back. See "Credentials".
     Nothing irreversible on SoundCloud without my yes. Deleting a track, removing tracks from a playlist, or overwriting a playlist's track list requires a dry-run report first and my explicit confirmation in this chat.
     Phase 1 is read-only everywhere. No uploads and no SoundCloud changes until I've approved the inventory report.
@@ -27,21 +27,24 @@ Credentials
 
 The SoundCloud API uses OAuth (client ID + client secret, then an access token and refresh token). The script needs those, not our account password.
 
-    I lost access to the account that the old script's API app was registered under, so we probably need a new SoundCloud API app registered to the band's account. Tell me the steps; I'll do the registration and the browser login myself. Note that SoundCloud has at times limited new app registrations, so check the current process first.
-    Store secrets with PowerShell SecretManagement / Windows Credential Manager (preferred), or in a file outside the repo and outside E:\Studio One\Songs, readable only by my Windows user. Add any local config files to .gitignore.
+    The first attempt was built with ChatGPT under a corporate account that has since been shut off, so that conversation history is gone. The SoundCloud side may still be fine: first check whether the old script or its config references an existing SoundCloud API app (client ID) we can keep using. Only if not, walk me through registering a new app for the band's account; I'll do the registration and the browser login myself. SoundCloud has at times limited new app registrations, so check the current process first.
+    Store secrets with PowerShell SecretManagement / Windows Credential Manager (preferred), or in a file outside the working folder's git checkout and outside E:\Studio One\Songs, readable only by my Windows user. Add any local config files to .gitignore.
     Handle token refresh in the script so it can run unattended.
 
 Phase 0: Find and understand what exists (report before changing anything)
 
-    Find the previous script(s), config and run log on this laptop. Look in my user profile, other Windows user profiles (the "lost account" may be an old Windows login), Documents, Desktop, C:\Scripts, and Task Scheduler. Search for *.ps1, *.py, *.log mentioning "soundcloud". If something needs admin rights, tell me.
-    Read the old script and the end of the run log (tail, not the whole thing). Summarize in a few lines: how it named tracks, how it bounced audio, what it recorded as done, where and why it stopped.
+    Find the previous script(s), config and run log, which I believe is an Excel workbook (.xlsx/.xlsm/.csv). Look in every user profile, Documents, Desktop, Downloads, OneDrive, C:\Scripts, and Task Scheduler. Search for *.ps1, *.py, *.bat, *.xlsx, *.csv, *.log, *.json, *.env that mention "soundcloud", and Excel files modified in the last couple of years. If something needs admin rights, tell me.
+    The first attempt was orchestrated through ChatGPT, and that account is gone. Look for leftovers of those conversations: the ChatGPT desktop app's data under %APPDATA% / %LOCALAPPDATA%, exported chats (conversations.json, chat.html), saved .txt/.md/.docx notes, and code snippets in Downloads. Firefox browser history may show page titles. Don't extract saved browser passwords or cookies. Summarize any decisions, naming rules or known problems you find.
+    Read the old script and the Excel log. For the log, read the column headers and the last ~50 rows with a script (the ImportExcel PowerShell module works without Excel installed), not the whole workbook. Summarize in a few lines: its columns, how it named tracks, how it bounced audio, what it recorded as done, where and why it stopped, and how many rows it says are uploaded compared with the 491 on SoundCloud.
     Check the tools: PowerShell version (5.1 vs 7), ffmpeg/sox, free disk space on each drive.
 
 Improve the old script rather than rewriting it, unless it's unsalvageable. If so, say why in one paragraph before replacing it.
 
 Phase 1: Inventory and dry run (read-only)
 
-Build one manifest file (CSV or JSON) that is the single source of truth. One row per take, with at least: session folder, take number, source files, sizes, duration, recorded date, year/playlist, intended SoundCloud title, status (pending / uploaded / excluded / skipped / error), SoundCloud track ID and URL, playlist, last error, last updated.
+Keep using the existing Excel run log. Copy the original workbook into a working folder on this laptop (for example D:\Stepbirds-uploader\, never under E:\Studio One\Songs), keep the original untouched as a backup, and continue in the copy. Keep its existing columns and rows and add columns as needed. All logs, the manifest, exclusions.txt and backups live on this laptop, not in GitHub. Back up the workbook (a timestamped copy) before every run that writes to it. If the workbook is open in Excel and locked, wait and retry, and never write a half-finished file.
+
+Use that workbook as the single source of truth (manifest), for example one sheet per take and one sheet for the run log, unless you find a good reason to keep the manifest separate; tell me if so. One row per take, with at least: session folder, take number, source files, sizes, duration, recorded date, year/playlist, intended SoundCloud title, status (pending / uploaded / excluded / skipped / error), SoundCloud track ID and URL, playlist, last error, last updated.
 
 To fill it:
 
@@ -56,7 +59,7 @@ Edge cases already visible in dir_songs.txt. Handle each and report counts:
     Unpaired takes: a Track 1(n) with no Track 2(n) or vice versa (about 6, e.g. 2022-11-30 takes 8 to 10, 2025-09-26 takes 3 and 4). Upload as mono duplicated to both channels, or flag. Ask me which.
     Name variants: Track  1.wav (two spaces) exists alongside Track 1.wav. Match names flexibly.
     More than two tracks per take (Track 3.wav and up, e.g. 2021-09-06 has Tracks 1 to 6) and multitrack sessions with named inputs (Snare, Kick Drum, Overheads, Vocal 1, Guitar 1 and so on, about 12 sessions, e.g. "2026-04-22 Brickhouse First Try At Multitracking"). A two-mic bounce doesn't apply here. Flag them for me. If a finished mixdown exists (Mixdown\ or Bounces\ folders, e.g. 2023-12-06, 2026-02-15 (2), 2026-05-27), propose uploading that instead.
-    Overdubs vs. new takes: when one folder has several pairs, parse the session's top-level .song file to tell sequential takes (new recording) from overdubs (layered over an earlier take at the same timeline position). A .song file is, I believe, a ZIP of XML files. Verify that, and research the format. Ignore .song copies under History\ and .autosave files..s
+    Overdubs vs. new takes: when one folder has several pairs, parse the session's top-level .song file to tell sequential takes (new recording) from overdubs (layered over an earlier take at the same timeline position). A .song file is, I believe, a ZIP of XML files. Verify that, and research the format. Ignore .song copies under History\ and .autosave files.
     Folders with no Media (e.g. 2021-10-12 Brickhouse Room I(10)) should be skipped and logged.
     Undated or titled folders: "Maniac On The Vapor Trail" and "Valley Of Despair" have no date in the name. Get the year from file timestamps for the playlist, and tell me. Folders like 2026-04-26 Prayer carry a real song title; use it in the SoundCloud title.
     Notes in folder names, e.g. (4 big blank space in middle) and (2) james and walker bass lead then mask. Keep the text in the title or description, and flag the "blank space" one for me.
@@ -66,7 +69,7 @@ Naming and audio
 
     Bounce each pair into one stereo file (Track 1 = left, Track 2 = right) with ffmpeg, keeping the source sample rate and bit depth. Recommend whether to upload WAV or FLAC (FLAC is lossless and about half the size, which makes uploads faster). Respect SoundCloud's per-file size and length limits, and check the current limits.
     Use the title convention the existing 491 uploads already follow (work it out from the old script and the API listing, and show me). If there isn't one, propose: YYYY-MM-DD Brickhouse Room I - Take N (or the song title when the folder has one).
-    All uploads are to be private. We are not publicizing or sharing these tracks with anyone except band members.
+    Ask me once whether new uploads should be public or private. Private is safer until we've listened through.
 
 Playlists
 
@@ -77,7 +80,7 @@ Exclusion list
 
     A plain text file, exclusions.txt, that we edit by hand. One entry per line: a session folder, or a folder plus take number. # starts a comment, and we'll often add a reason ("not us", "bad take").
     The script never uploads anything that's on it.
-    If something on the list is already on SoundCloud, log it. Actual deletion only happens after I confirm a dry-run list of exactly what will be deleted. Record the outcome in the manifest.
+    If something on the list is already on SoundCloud, set it to private first (reversible), and log it. Actual deletion only happens after I confirm a dry-run list of exactly what will be deleted. Record the outcome in the manifest.
 
 Being a good SoundCloud API citizen
 
@@ -89,7 +92,7 @@ Running by itself (and saving AI tokens)
 
     The uploader and the watcher must be plain PowerShell run by Windows Task Scheduler, with no AI involved. Claude is only for building and fixing it. Don't keep a Claude session running just to monitor uploads.
     Watcher: on each run (e.g. hourly, and only when the laptop is idle), look for new session folders or takes. Only treat a take as ready once its files haven't changed for at least 30 minutes, so we never grab a recording that's still in progress or a session that's still open in Studio One.
-    Logs: keep appending to the existing run log so the handoff stays readable. Use one line per action with a timestamp, in plain English. Also write a short daily summary ("uploaded 12, 3 errors, 140 pending") and rotate logs by month.
+    Logs: keep appending to the existing run log so the handoff stays readable. Use one line per action with a timestamp, in plain English. Also write a short daily summary ("uploaded 12, 3 errors, 140 pending".)
     Errors go to a separate problems report with what failed, why, and the suggested fix, so I can read it without asking Claude.
     Add a -WhatIf / -DryRun switch, and a -Status command that prints the summary from the manifest.
 
@@ -97,6 +100,6 @@ How to work with me in this session
 
     Work in phases (0, 1, then build, then a test upload of 2 or 3 takes, then the bulk run). Stop for my OK after Phase 0, Phase 1 and the test upload.
     Be thrifty with tokens: summarize big files with commands instead of reading them, and don't re-read files you've already understood.
-    Keep HANDOFF.md up to date in the repo as you go: what's done, what's next, open questions, and where everything lives. If this session runs out of usage, a fresh session should be able to continue from that file. Stop at a clean checkpoint rather than mid-change.
-    Commit the script, config template, exclusions.txt and HANDOFF.md to https://github.com/jeffress/stepbirds on a branch, and never commit secrets, the manifest's tokens, or audio.
+    Keep HANDOFF.md up to date in the working folder on this laptop as you go: what's done, what's next, open questions, and where everything lives. If this session runs out of usage, a fresh session should be able to continue from that file. Stop at a clean checkpoint rather than mid-change.
+    The log, manifest, exclusions and handoff notes stay on this laptop. If you put the script code in https://github.com/jeffress/stepbirds, use a branch, and never commit secrets, the Excel log, or audio.
     When unsure, ask one clear question rather than guessing.
